@@ -8,6 +8,8 @@ export interface IDocumentFile extends Document {
   size: number;
   extension: string;
   storagePath: string;
+  storageProvider?: 'local' | 'google-drive';
+  storageKey?: string;
   extractedText?: string;
   wordCount?: number;
   pageCount?: number;
@@ -25,6 +27,8 @@ const documentSchema = new Schema<IDocumentFile>(
     size: { type: Number, required: true },
     extension: { type: String, required: true },
     storagePath: { type: String, required: true },
+    storageProvider: { type: String, enum: ['local', 'google-drive'], default: 'local' },
+    storageKey: { type: String },
     extractedText: { type: String },
     wordCount: { type: Number },
     pageCount: { type: Number },

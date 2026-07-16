@@ -3,6 +3,8 @@ import { documentParserService } from './DocumentParserService.js';
 import { getAiProvider } from '../providers/ai/index.js';
 import type { AiMessage } from '../providers/ai/types.js';
 import { truncateText } from '../utils/fileTypes.js';
+import { z } from 'zod';
+import { UsageMetric } from '../models/UsageMetric.js';
 
 const DOCUMENT_CONTEXT_LIMIT = 120_000;
 
@@ -65,7 +67,66 @@ ${context}
     );
     return { summary: result.answer, model: result.model };
   }
+
+  async generateQuiz(
+    documentId: string,
+    userId: string,
+    options: { count: number; difficulty: 'easy' | 'medium' | 'hard'; gradeLevel?: string }
+  ) {
+    const startedAt = Date.now();
+    const doc = await documentStorageService.getById(documentId, userId);
+    const text = truncateText(
+      await documentStorageService.getExtractedText(documentId, userId),
+      DOCUMENT_CONTEXT_LIMIT
+    );
+    const response = await getAiProvider().chat({
+      temperature: 0.3,
+      maxTokens: 5_000,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'Create assessments only from the supplied source. Return valid JSON only. ' +
+            'Every answer must be supported by the source and include a short explanation.',
+        },
+        {
+          role: 'user',
+          content: `Document: ${doc.originalName}
+Grade: ${options.gradeLevel ?? 'general'}
+Difficulty: ${options.difficulty}
+Question count: ${options.count}
+
+Return {"title":"...","questions":[{"question":"...","options":["A","B","C","D"],"answerIndex":0,"explanation":"..."}]}.
+
+Source:
+${text}`,
+        },
+      ],
+    });
+    const json = response.content.match(/\{[\s\S]*\}/)?.[0] ?? response.content;
+    const quiz = quizResponseSchema.parse(JSON.parse(json));
+    await UsageMetric.create({
+      userId,
+      operation: 'quiz',
+      model: response.model,
+      latencyMs: Date.now() - startedAt,
+      success: true,
+    });
+    return { ...quiz, model: response.model };
+  }
 }
+
+const quizResponseSchema = z.object({
+  title: z.string(),
+  questions: z.array(
+    z.object({
+      question: z.string(),
+      options: z.array(z.string()).length(4),
+      answerIndex: z.number().int().min(0).max(3),
+      explanation: z.string(),
+    })
+  ),
+});
 
 function pathBasename(name: string): string {
   const idx = name.lastIndexOf('.');

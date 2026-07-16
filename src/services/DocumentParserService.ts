@@ -4,6 +4,8 @@ import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 import { getExtension } from '../utils/fileTypes.js';
 import { ValidationError } from '../utils/errors.js';
+import { config } from '../config/index.js';
+import { getAiProvider } from '../providers/ai/index.js';
 
 export interface ParsedDocument {
   text: string;
@@ -14,9 +16,12 @@ export interface ParsedDocument {
 
 export class DocumentParserService {
   async parseFile(filePath: string, originalName: string, mimeType: string): Promise<ParsedDocument> {
-    const ext = getExtension(originalName);
     const buffer = await fs.readFile(filePath);
+    return this.parseBuffer(buffer, originalName, mimeType);
+  }
 
+  async parseBuffer(buffer: Buffer, originalName: string, mimeType: string): Promise<ParsedDocument> {
+    const ext = getExtension(originalName);
     switch (ext) {
       case '.pdf':
         return this.parsePdf(buffer);
@@ -39,7 +44,7 @@ export class DocumentParserService {
       case '.png':
       case '.gif':
       case '.webp':
-        return this.parseImagePlaceholder(originalName, mimeType);
+        return this.parseImage(buffer, originalName, mimeType);
       default:
         if (mimeType.startsWith('text/')) {
           return this.parsePlainText(buffer, ext || 'text');
@@ -98,9 +103,38 @@ export class DocumentParserService {
     return { text, wordCount: this.countWords(text), format: 'json' };
   }
 
-  private parseImagePlaceholder(originalName: string, mimeType: string): ParsedDocument {
-    const text = `[Image file: ${originalName} (${mimeType}). Use vision-capable AI endpoints for image analysis.]`;
-    return { text, wordCount: 0, format: 'image' };
+  private async parseImage(
+    buffer: Buffer,
+    originalName: string,
+    mimeType: string
+  ): Promise<ParsedDocument> {
+    if (buffer.length > 10 * 1024 * 1024) {
+      throw new ValidationError('Images sent to vision must be 10 MB or smaller');
+    }
+    const response = await getAiProvider().chat({
+      model: config.GROQ_VISION_MODEL,
+      temperature: 0.2,
+      maxTokens: 2_000,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text:
+                `Analyze ${originalName}. Transcribe visible text accurately, describe diagrams, ` +
+                'and explain the educational meaning. Do not invent details that are not visible.',
+            },
+            {
+              type: 'image_url',
+              image_url: { url: `data:${mimeType};base64,${buffer.toString('base64')}` },
+            },
+          ],
+        },
+      ],
+    });
+    const text = response.content.trim();
+    return { text, wordCount: this.countWords(text), format: 'image-vision' };
   }
 
   private countWords(text: string): number {

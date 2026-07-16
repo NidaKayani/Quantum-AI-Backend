@@ -9,16 +9,19 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test test/security/*.test.mjs"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
+    "@upstash/redis": "^1.38.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
+    "googleapis": "^173.0.0",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
     "mammoth": "^1.9.0",
@@ -40,8 +43,12 @@
     "@types/multer": "^1.4.12",
     "@types/node": "^22.10.5",
     "@types/pdf-parse": "^1.1.4",
+    "@types/supertest": "^7.2.1",
     "@types/uuid": "^10.0.0",
+    "mongodb-memory-server": "^11.2.0",
+    "supertest": "^7.2.2",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.10"
   }
 }

@@ -1,3 +1,23 @@
+## Next-level endpoints
+
+All endpoints below require a QuantumChat-compatible bearer JWT when
+`AUTH_REQUIRED=true`.
+
+- `GET /api/v1/conversations?q=&archived=&limit=&cursor=` — cursor-paginated conversations
+- `PATCH /api/v1/conversations/:id` — rename, pin, or archive
+- `POST /api/v1/conversations/:id/messages/delete-last` — regeneration support
+- `DELETE /api/v1/conversations/:id/messages/from/:messageId` — edit/retry support
+- `POST /api/v1/documents/:id/quiz` — generate a structured four-option quiz
+- `POST /api/v1/presentations/:id/plan` — preview a structured slide plan
+
+`POST /api/v1/ai/chat` also accepts:
+
+- `explicitContext: string[]` — context explicitly approved in the QuantumChat privacy preview
+- `sourceLink: { quantumChatPeerId?: string, groupId?: string }` — metadata-only link to the calling surface
+
+When a group link is supplied, the final stream event includes a signed
+`contentHash`, `requestId`, and `receipt`. QuantumChat verifies that receipt
+before publishing a message as the reserved QuantumAI system user.
 # Quantum AI Assistant API
 
 Production-ready REST API for **Quantum AI** — Groq-powered chat, document analysis, PDF conversion, and PowerPoint generation. Designed as a standalone service for later integration into Quantum Chat.

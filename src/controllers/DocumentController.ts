@@ -16,8 +16,9 @@ export class DocumentController {
       }
 
       const saved = [];
+      const source = req.body?.source === 'quantum-chat' ? 'quantum-chat' : 'standalone';
       for (const file of files) {
-        const doc = await documentStorageService.saveUploadedFile(req.userId!, file);
+        const doc = await documentStorageService.saveUploadedFile(req.userId!, file, source);
         saved.push({
           id: doc._id,
           originalName: doc.originalName,
@@ -49,6 +50,15 @@ export class DocumentController {
       const id = getRouteParam(req, 'id');
       const doc = await documentStorageService.getById(id, req.userId!);
       return sendSuccess(res, { document: doc });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  remove = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await documentStorageService.delete(getRouteParam(req, 'id'), req.userId!);
+      return sendSuccess(res, { deleted: true });
     } catch (err) {
       next(err);
     }
@@ -88,6 +98,19 @@ export class DocumentController {
   summarize = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const result = await documentAnalysisService.summarizeDocument(getRouteParam(req, 'id'), req.userId!);
+      return sendSuccess(res, result);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  quiz = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await documentAnalysisService.generateQuiz(
+        getRouteParam(req, 'id'),
+        req.userId!,
+        req.body
+      );
       return sendSuccess(res, result);
     } catch (err) {
       next(err);

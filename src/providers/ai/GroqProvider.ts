@@ -27,7 +27,7 @@ export class GroqProvider implements IAiProvider {
     try {
       const response = await this.client.chat.completions.create({
         model: request.model ?? config.GROQ_CHAT_MODEL,
-        messages: request.messages,
+        messages: request.messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
         max_completion_tokens: request.maxTokens ?? config.GROQ_MAX_COMPLETION_TOKENS,
         temperature: request.temperature ?? 0.7,
         stream: false,
@@ -56,7 +56,7 @@ export class GroqProvider implements IAiProvider {
     try {
       const stream = await this.client.chat.completions.create({
         model: request.model ?? config.GROQ_CHAT_MODEL,
-        messages: request.messages,
+        messages: request.messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
         max_completion_tokens: request.maxTokens ?? config.GROQ_MAX_COMPLETION_TOKENS,
         temperature: request.temperature ?? 0.7,
         stream: true,
