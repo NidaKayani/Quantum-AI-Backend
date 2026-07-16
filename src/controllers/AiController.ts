@@ -5,12 +5,25 @@ export class AiController {
   chat = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = req.userId!;
-      const { message, conversationId, documentIds, model, temperature, stream } = req.body;
+      const {
+        message,
+        conversationId,
+        documentIds,
+        explicitContext,
+        sourceLink,
+        model,
+        temperature,
+        stream,
+        ephemeral,
+      } = req.body;
 
       if (stream) {
         await aiChatService.chatStream(userId, message, res, {
           conversationId,
           documentIds,
+          explicitContext,
+          sourceLink,
+          ephemeral,
           model,
           temperature,
         });
@@ -20,6 +33,9 @@ export class AiController {
       const result = await aiChatService.chat(userId, message, {
         conversationId,
         documentIds,
+        explicitContext,
+        sourceLink,
+        ephemeral,
         model,
         temperature,
       });
