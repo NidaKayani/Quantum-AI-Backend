@@ -75,6 +75,21 @@ export class DocumentStorageService {
     const doc = await this.getById(id, userId);
     return fs.readFile(doc.storagePath);
   }
+
+    async delete(id: string, userId: string): Promise<void> {
+    const doc = await this.getById(id, userId);
+    
+    // Delete from filesystem
+    try {
+      await fs.unlink(doc.storagePath);
+    } catch {
+      // File may already be deleted, continue anyway
+    }
+    
+    // Delete from database
+    await AiDocument.deleteOne({ _id: id, userId });
+  }
+
 }
 
 export const documentStorageService = new DocumentStorageService();

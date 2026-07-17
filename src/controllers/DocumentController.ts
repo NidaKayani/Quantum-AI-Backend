@@ -6,6 +6,9 @@ import {
 } from '../services/DocumentAnalysisService.js';
 import { sendSuccess } from '../utils/helpers.js';
 import { getRouteParam } from '../utils/params.js';
+import { powerPointService } from '../services/PowerPointService.js';
+
+
 
 export class DocumentController {
   upload = async (req: Request, res: Response, next: NextFunction) => {
@@ -133,6 +136,29 @@ export class DocumentController {
       next(err);
     }
   };
+
+  presentation = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { text, plan, filename } = await powerPointService.generateFromDocument(
+        getRouteParam(req, 'id'),
+        req.userId!,
+        req.body
+      );
+      return sendSuccess(res, { text, plan, filename });
+    } catch (err) {
+      next(err);
+    }
+  }; 
+
+  delete = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await documentStorageService.delete(getRouteParam(req, 'id'), req.userId!);
+      return sendSuccess(res, { success: true });
+    } catch (err) {
+      next(err);
+    }
+  };
+
 }
 
 export const documentController = new DocumentController();
