@@ -4,8 +4,6 @@ import { authenticate, upload } from '../middleware/index.js';
 import { validateBody, validateParams } from '../validators/index.js';
 import { documentQuestionSchema, objectIdParamSchema, quizSchema } from '../validators/schemas.js';
 import { config } from '../config/index.js';
-import { presentationController } from '../controllers/PresentationController.js';
-import { presentationSchema } from '../validators/schemas.js';
 
 const router = Router();
 
@@ -32,7 +30,5 @@ router.post('/:id/convert/txt', validateParams(objectIdParamSchema), documentCon
 router.post('/:id/convert/markdown', validateParams(objectIdParamSchema), documentController.toMarkdown);
 router.get('/:id/download/txt', validateParams(objectIdParamSchema), documentController.downloadTxt);
 router.get('/:id/download/markdown', validateParams(objectIdParamSchema), documentController.downloadMarkdown);
-router.delete('/:id', validateParams(objectIdParamSchema), documentController.delete);
 
 export default router;
-
