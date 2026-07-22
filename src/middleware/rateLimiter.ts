@@ -1,7 +1,10 @@
-import rateLimit from 'express-rate-limit';
-import type { Options, Store } from 'express-rate-limit';
+import rateLimitImport from 'express-rate-limit';
+import type { Options, RateLimitRequestHandler, Store } from 'express-rate-limit';
 import { Redis } from '@upstash/redis';
 import { config } from '../config/index.js';
+
+/** express-rate-limit CJS typings are not callable under NodeNext + TS 5.9. */
+const rateLimit = rateLimitImport as unknown as (options: Partial<Options>) => RateLimitRequestHandler;
 
 class UpstashRateLimitStore implements Store {
   private windowMs = 60_000;

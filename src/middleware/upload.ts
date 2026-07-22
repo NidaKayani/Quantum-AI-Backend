@@ -1,14 +1,21 @@
-import multer from 'multer';
+import multerImport from 'multer';
+import type { FileFilterCallback } from 'multer';
 import { config } from '../config/index.js';
 import { ALLOWED_EXTENSIONS, ALLOWED_MIME_TYPES, getExtension } from '../utils/fileTypes.js';
 import { ValidationError } from '../utils/errors.js';
+
+/** multer CJS typings are not callable under NodeNext + TS 5.9. */
+const multer = multerImport as unknown as typeof multerImport & {
+  (options?: multerImport.Options): multerImport.Multer;
+  memoryStorage: () => multerImport.StorageEngine;
+};
 
 const storage = multer.memoryStorage();
 
 function fileFilter(
   _req: Express.Request,
   file: Express.Multer.File,
-  cb: multer.FileFilterCallback
+  cb: FileFilterCallback
 ) {
   const ext = getExtension(file.originalname);
   const mimeOk = (ALLOWED_MIME_TYPES as readonly string[]).includes(file.mimetype);

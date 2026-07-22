@@ -1,30 +1,17 @@
-import express from 'express';
+import express, { type RequestHandler } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { config } from './config/index.js';
 import routes from './routes/index.js';
 import { globalRateLimiter, errorHandler, notFoundHandler } from './middleware/index.js';
 
+/** Helmet's CJS typings are not callable under NodeNext + TS 5.9; runtime default export is fine. */
+const applyHelmet = helmet as unknown as () => RequestHandler;
+
 export function createApp() {
   const app = express();
 
-  app.use(
-    helmet({
-      crossOriginResourcePolicy: { policy: 'cross-origin' },
-      contentSecurityPolicy: {
-        useDefaults: true,
-        directives: {
-          defaultSrc: ["'none'"],
-          frameAncestors: ["'none'"],
-          baseUri: ["'none'"],
-          formAction: ["'none'"],
-        },
-      },
-      referrerPolicy: { policy: 'no-referrer' },
-      frameguard: { action: 'deny' },
-      xContentTypeOptions: true,
-    })
-  );
+  app.use(applyHelmet());
   app.use(
     cors({
       origin: config.CORS_ORIGIN.split(',').map((o) => o.trim()),

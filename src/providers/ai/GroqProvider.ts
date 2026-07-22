@@ -1,4 +1,5 @@
-import OpenAI from 'openai';
+import OpenAIImport from 'openai';
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions.js';
 import { config, logger } from '../../config/index.js';
 import { AiProviderError } from '../../utils/errors.js';
 import type {
@@ -8,13 +9,45 @@ import type {
   IAiProvider,
 } from './types.js';
 
+type ChatCompletion = {
+  choices: Array<{ message?: { content?: string | null }; finish_reason?: string | null }>;
+  model: string;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
+};
+
+type ChatChunk = {
+  choices: Array<{ delta?: { content?: string | null }; finish_reason?: string | null }>;
+};
+
+type OpenAIClient = {
+  chat: {
+    completions: {
+      create(body: Record<string, unknown> & { stream?: false }): Promise<ChatCompletion>;
+      create(body: Record<string, unknown> & { stream: true }): Promise<AsyncIterable<ChatChunk>>;
+    };
+  };
+  models: {
+    list: () => Promise<{ data: Array<{ id: string }> }>;
+  };
+};
+
+/** openai CJS typings are not constructable under NodeNext + TS 5.9. */
+const OpenAI = OpenAIImport as unknown as new (options: {
+  apiKey: string;
+  baseURL?: string;
+}) => OpenAIClient;
+
 /**
  * Groq provider using the OpenAI-compatible API.
  * @see https://console.groq.com/docs/overview
  */
 export class GroqProvider implements IAiProvider {
   readonly name = 'groq';
-  private client: OpenAI;
+  private client: OpenAIClient;
 
   constructor() {
     this.client = new OpenAI({
@@ -27,7 +60,7 @@ export class GroqProvider implements IAiProvider {
     try {
       const response = await this.client.chat.completions.create({
         model: request.model ?? config.GROQ_CHAT_MODEL,
-        messages: request.messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+        messages: request.messages as ChatCompletionMessageParam[],
         max_completion_tokens: request.maxTokens ?? config.GROQ_MAX_COMPLETION_TOKENS,
         temperature: request.temperature ?? 0.7,
         stream: false,
@@ -56,7 +89,7 @@ export class GroqProvider implements IAiProvider {
     try {
       const stream = await this.client.chat.completions.create({
         model: request.model ?? config.GROQ_CHAT_MODEL,
-        messages: request.messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+        messages: request.messages as ChatCompletionMessageParam[],
         max_completion_tokens: request.maxTokens ?? config.GROQ_MAX_COMPLETION_TOKENS,
         temperature: request.temperature ?? 0.7,
         stream: true,
