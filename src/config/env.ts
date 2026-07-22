@@ -1,7 +1,12 @@
 import { z } from 'zod';
 import dotenv from 'dotenv';
+import path from 'path';
 
+// Load .env first, then override with .env.production when NODE_ENV=production
 dotenv.config();
+if (process.env.NODE_ENV === 'production') {
+  dotenv.config({ path: path.resolve(process.cwd(), '.env.production'), override: true });
+}
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -35,7 +40,6 @@ const envSchema = z.object({
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'http', 'debug']).default('info'),
-  SERPAPI_API_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
