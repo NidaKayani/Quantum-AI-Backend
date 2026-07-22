@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/QuantumLogicsLabs/Quantum-AI-Backend/security/advisories/new
+    about: Privately report a security issue — do not file a public bug.
+  - name: QuantumAI Frontend
+    url: https://github.com/QuantumLogicsLabs/Quantum-AI-Frontend/issues
+    about: UI bugs belong in Quantum-AI-Frontend.
