@@ -33,7 +33,7 @@ test('production auth rejects missing, forged, expired, and wrong-issuer JWTs', 
   );
   assert.equal(
     run(jwt.sign({ id: 'user', iss: 'attacker' }, SECRET, { algorithm: 'HS256' })).error?.message,
-    'Invalid or expired token'
+    'Invalid token issuer'
   );
 });
 
