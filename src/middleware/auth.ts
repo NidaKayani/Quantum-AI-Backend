@@ -2,10 +2,21 @@ import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/index.js';
 import { UnauthorizedError } from '../utils/errors.js';
+import { AI_JWT_ISSUER } from '../utils/authTokens.js';
+
+const LEGACY_ISSUERS = new Set(['quantum-chat', 'quantumchat']);
+
+function isAllowedIssuer(iss: string | undefined): boolean {
+  if (!iss) return true; // legacy QuantumChat tokens often omit iss
+  if (iss === AI_JWT_ISSUER) return true;
+  if (iss === config.JWT_ISSUER) return true;
+  if (LEGACY_ISSUERS.has(iss)) return true;
+  return false;
+}
 
 /**
- * Resolves the authenticated user id from JWT or dev headers.
- * Compatible with Quantum Chat JWT tokens (sub / id claims).
+ * Resolves the authenticated user id from JWT (Quantum AI or legacy Quantum Chat)
+ * or from X-User-Id when AUTH_REQUIRED=false.
  */
 export function authenticate(req: Request, _res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
@@ -15,9 +26,14 @@ export function authenticate(req: Request, _res: Response, next: NextFunction) {
     try {
       const payload = jwt.verify(token, config.JWT_SECRET, {
         algorithms: ['HS256'],
-      }) as jwt.JwtPayload & { sub?: string; id?: string; userId?: string };
+      }) as jwt.JwtPayload & {
+        sub?: string;
+        id?: string;
+        userId?: string;
+        email?: string;
+      };
 
-      if (payload.iss && payload.iss !== config.JWT_ISSUER) {
+      if (!isAllowedIssuer(payload.iss)) {
         throw new UnauthorizedError('Invalid token issuer');
       }
 
@@ -27,7 +43,10 @@ export function authenticate(req: Request, _res: Response, next: NextFunction) {
         throw new UnauthorizedError('Token missing user identifier');
       }
       return next();
-    } catch {
+    } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        return next(err);
+      }
       if (config.AUTH_REQUIRED) {
         return next(new UnauthorizedError('Invalid or expired token'));
       }

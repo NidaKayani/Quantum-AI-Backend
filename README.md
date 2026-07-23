@@ -16,7 +16,9 @@ npm install
 Edit `.env`:
 - `GROQ_API_KEY` — from [Groq Console](https://console.groq.com/docs/overview)
 - `MONGODB_URI` — MongoDB connection string
-- `JWT_SECRET` — at least 16 characters
+- `JWT_SECRET` — at least 16 characters (signs Quantum AI tokens)
+- `JWT_ISSUER` — default `quantum-ai`
+- `AUTH_REQUIRED` — set `true` in production
 
 ## Run
 

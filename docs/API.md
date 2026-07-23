@@ -1,7 +1,7 @@
 ## Next-level endpoints
 
-All endpoints below require a QuantumChat-compatible bearer JWT when
-`AUTH_REQUIRED=true`.
+All endpoints below require a Quantum AI bearer JWT (or a legacy QuantumChat-compatible JWT)
+when `AUTH_REQUIRED=true`.
 
 - `GET /api/v1/conversations?q=&archived=&limit=&cursor=` — cursor-paginated conversations
 - `PATCH /api/v1/conversations/:id` — rename, pin, or archive
@@ -28,10 +28,23 @@ Production-ready REST API for **Quantum AI** — Groq-powered chat, document ana
 
 ## Authentication
 
+Quantum AI has **its own** Sign up / Sign in (`POST /auth/register`, `POST /auth/login`).
+Accounts are stored in the AI database (`AiUser`) and are separate from QuantumChat messenger accounts.
+
 | Mode | Behavior |
 |------|----------|
 | `AUTH_REQUIRED=false` (dev) | Send `X-User-Id: your-user-id` or defaults to `dev-user` |
-| `AUTH_REQUIRED=true` (prod) | `Authorization: Bearer <JWT>` — compatible with Quantum Chat tokens (`sub`, `id`, or `userId` claim) |
+| `AUTH_REQUIRED=true` (prod) | `Authorization: Bearer <JWT>` issued by Quantum AI (`iss=quantum-ai`) |
+
+Legacy QuantumChat JWTs signed with the same `JWT_SECRET` (missing/`quantum-chat` issuer) are still accepted for compatibility.
+
+### Auth endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/auth/register` | Create Quantum AI account `{ email, password, displayName? }` |
+| POST | `/auth/login` | Sign in `{ email, password }` → `{ token, user }` |
+| GET | `/auth/me` | Current user profile (Bearer required) |
 
 ## Health
 

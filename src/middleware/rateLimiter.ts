@@ -67,3 +67,13 @@ export const aiRateLimiter = rateLimit({
   store: store('quantum-ai:ai'),
   message: { success: false, error: 'AI rate limit exceeded', code: 'AI_RATE_LIMIT' },
 });
+
+export const authRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  store: store('quantum-ai:auth'),
+  message: { success: false, error: 'Too many auth attempts', code: 'AUTH_RATE_LIMIT' },
+});

@@ -19,7 +19,7 @@ const envSchema = z.object({
   GROQ_VISION_MODEL: z.string().default('meta-llama/llama-4-scout-17b-16e-instruct'),
   GROQ_MAX_COMPLETION_TOKENS: z.coerce.number().default(4096),
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
-  JWT_ISSUER: z.string().default('quantum-chat'),
+  JWT_ISSUER: z.string().default('quantum-ai'),
   QUANTUM_AI_SERVICE_SECRET: z.string().min(32).optional(),
   AUTH_REQUIRED: z
     .string()
@@ -73,7 +73,7 @@ const fallback = {
   GROQ_VISION_MODEL: 'meta-llama/llama-4-scout-17b-16e-instruct',
   GROQ_MAX_COMPLETION_TOKENS: 4096,
   JWT_SECRET: process.env.JWT_SECRET ?? 'vercel-build-placeholder-secret',
-  JWT_ISSUER: 'quantum-chat',
+  JWT_ISSUER: 'quantum-ai',
   QUANTUM_AI_SERVICE_SECRET: undefined as string | undefined,
   AUTH_REQUIRED: false,
   STORAGE_PROVIDER: 'local' as const,

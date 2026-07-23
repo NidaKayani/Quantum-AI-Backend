@@ -63,3 +63,14 @@ export const presentationSchema = z.object({
 export const objectIdParamSchema = z.object({
   id: z.string().min(1),
 });
+
+export const authRegisterSchema = z.object({
+  email: z.string().email().max(254),
+  password: z.string().min(8).max(128),
+  displayName: z.string().min(1).max(80).optional(),
+});
+
+export const authLoginSchema = z.object({
+  email: z.string().email().max(254),
+  password: z.string().min(1).max(128),
+});
