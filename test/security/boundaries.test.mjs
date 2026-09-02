@@ -44,6 +44,14 @@ test('group bot receipts are bound to requester, destination, and content hash',
   assert.match(receipt, /createHmac\('sha256'/);
 });
 
+test('production always requires login and rejects AUTH_REQUIRED=false', async () => {
+  const env = await source('src/config/env.ts');
+  const app = await source('src/app.ts');
+  assert.match(env, /AUTH_REQUIRED:\s*isProduction\s*\?\s*true/);
+  assert.match(app, /AUTH_REQUIRED must be true in production/);
+  assert.match(app, /AUTH_MISCONFIGURED/);
+});
+
 test('production rate limiting uses a distributed Upstash store when configured', async () => {
   const limiter = await source('src/middleware/rateLimiter.ts');
   assert.match(limiter, /class UpstashRateLimitStore/);
