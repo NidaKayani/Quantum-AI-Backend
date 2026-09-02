@@ -28,10 +28,18 @@ const envSchema = z.object({
       .string({ required_error: 'Required' })
       .min(32, 'QUANTUM_AI_SERVICE_SECRET must be at least 32 characters')
   ),
-  AUTH_REQUIRED: z
-    .string()
-    .transform((v) => v === 'true')
-    .default('false'),
+  // Accept true/false/1/0/yes/no. Unset defaults to true in production so a
+  // copied .env.example (AUTH_REQUIRED=false) cannot leave the live site open.
+  AUTH_REQUIRED: z.preprocess((value) => {
+    const productionDefault = process.env.NODE_ENV === 'production';
+    if (value === undefined || value === null || String(value).trim() === '') {
+      return productionDefault;
+    }
+    const normalized = String(value).trim().toLowerCase();
+    if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+    if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+    return productionDefault;
+  }, z.boolean()),
   // local = disk (dev only); mongodb = GridFS (recommended on Vercel);
   // google-drive = optional remote Drive folder.
   STORAGE_PROVIDER: z.enum(['local', 'google-drive', 'mongodb']).default('local'),
@@ -103,19 +111,21 @@ const fallback = {
 };
 
 const data = parsed.success ? parsed.data : fallback;
+const isProduction = data.NODE_ENV === 'production';
+
+if (isProduction && !data.AUTH_REQUIRED) {
+  console.warn(
+    'AUTH_REQUIRED=false was ignored because NODE_ENV=production. Login is required on the live site.'
+  );
+}
 
 export const config = {
   ...data,
-  isProduction: data.NODE_ENV === 'production',
+  isProduction,
+  // Never allow the X-User-Id impersonation bypass on a production host.
+  // app.ts also fail-closes if this is ever false in production.
+  AUTH_REQUIRED: isProduction ? true : data.AUTH_REQUIRED,
   maxFileSizeBytes: data.MAX_FILE_SIZE_MB * 1024 * 1024,
 };
-
-if (config.isProduction && !config.AUTH_REQUIRED) {
-  console.error(
-    'SECURITY WARNING: AUTH_REQUIRED=false while NODE_ENV=production. ' +
-    'The X-User-Id header will impersonate any user with zero verification. ' +
-    'All requests will be rejected until this is corrected.'
-  );
-}
 
 export type AppConfig = typeof config;
