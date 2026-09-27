@@ -158,19 +158,6 @@ export class DocumentController {
     } catch (err) {
       next(err);
     }
-  };
-
-  presentation = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { text, plan, filename } = await powerPointService.generateFromDocument(
-        getRouteParam(req, 'id'),
-        req.userId!,
-        req.body
-      );
-      return sendSuccess(res, { text, plan, filename });
-    } catch (err) {
-      next(err);
-    }
   }; 
 
   delete = async (req: Request, res: Response, next: NextFunction) => {
