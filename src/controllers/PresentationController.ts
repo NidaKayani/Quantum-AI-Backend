@@ -6,6 +6,8 @@ import { documentStorageService } from '../services/DocumentStorageService.js';
 import { UsageMetric } from '../models/UsageMetric.js';
 import { config } from '../config/index.js';
 
+const PPTX_MIME = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+
 export class PresentationController {
   generatePlan = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -24,24 +26,23 @@ export class PresentationController {
     try {
       const startedAt = Date.now();
       const id = getRouteParam(req, 'id');
-      const { text, plan, filename } = await powerPointService.generateFromDocument(
+      const { buffer, plan, filename } = await powerPointService.generateFromDocument(
         id,
         req.userId!,
         req.body
       );
-      const payload = Buffer.from(text, 'utf8');
 
       if (req.query.download === 'true') {
-        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.setHeader('Content-Type', PPTX_MIME);
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-        return res.send(payload);
+        return res.send(buffer);
       }
 
       const artifact = await documentStorageService.saveGeneratedArtifact(
         req.userId!,
         filename,
-        'text/plain; charset=utf-8',
-        payload,
+        PPTX_MIME,
+        buffer,
         { sourceDocumentId: id, artifactType: 'presentation' }
       );
       await UsageMetric.create({
@@ -52,10 +53,9 @@ export class PresentationController {
         success: true,
       });
       return sendSuccess(res, {
-        text,
         filename,
         plan,
-        size: payload.length,
+        size: buffer.length,
         artifactDocumentId: String(artifact._id),
         storageProvider: artifact.storageProvider,
         downloadHint: `POST /presentations/${id}/download`,
@@ -69,18 +69,17 @@ export class PresentationController {
     try {
       const startedAt = Date.now();
       const id = getRouteParam(req, 'id');
-      const { text, filename } = await powerPointService.generateFromDocument(
+      const { buffer, filename } = await powerPointService.generateFromDocument(
         id,
         req.userId!,
         req.body
       );
-      const payload = Buffer.from(text, 'utf8');
 
       await documentStorageService.saveGeneratedArtifact(
         req.userId!,
         filename,
-        'text/plain; charset=utf-8',
-        payload,
+        PPTX_MIME,
+        buffer,
         { sourceDocumentId: id, artifactType: 'presentation' }
       );
       await UsageMetric.create({
@@ -90,9 +89,9 @@ export class PresentationController {
         latencyMs: Date.now() - startedAt,
         success: true,
       });
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Content-Type', PPTX_MIME);
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      return res.send(payload);
+      return res.send(buffer);
     } catch (err) {
       next(err);
     }
