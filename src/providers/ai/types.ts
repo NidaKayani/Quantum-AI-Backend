@@ -15,6 +15,7 @@ export interface AiChatRequest {
   maxTokens?: number;
   temperature?: number;
   stream?: boolean;
+  responseFormat?: { type: 'json_object' };
 }
 
 export interface AiChatResponse {

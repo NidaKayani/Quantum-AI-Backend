@@ -24,6 +24,9 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     return sendError(res, 400, 'File too large', 'FILE_TOO_LARGE');
   }
 
-  logger.error('Unhandled error', { err });
+  logger.error('Unhandled error', {
+    message: err instanceof Error ? err.message : String(err),
+    stack: err instanceof Error ? err.stack : undefined,
+  });
   return sendError(res, 500, 'Internal server error', 'INTERNAL_ERROR');
 }
