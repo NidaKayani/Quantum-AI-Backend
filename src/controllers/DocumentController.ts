@@ -6,7 +6,6 @@ import {
 } from '../services/DocumentAnalysisService.js';
 import { sendSuccess } from '../utils/helpers.js';
 import { getRouteParam } from '../utils/params.js';
-import { powerPointService } from '../services/PowerPointService.js';
 import { formatConverterService } from '../services/FormatConverterService.js';
 
 
@@ -155,19 +154,6 @@ export class DocumentController {
       res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
       return res.send(result.content);
-    } catch (err) {
-      next(err);
-    }
-  };
-
-  presentation = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { text, plan, filename } = await powerPointService.generateFromDocument(
-        getRouteParam(req, 'id'),
-        req.userId!,
-        req.body
-      );
-      return sendSuccess(res, { text, plan, filename });
     } catch (err) {
       next(err);
     }
