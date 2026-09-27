@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { config } from '../config/index.js';
 import { AiDocument } from '../models/Document.js';
 import { documentParserService } from './DocumentParserService.js';
+import { logger } from '../config/logger.js';
 import { NotFoundError } from '../utils/errors.js';
 import { getExtension, sanitizeFilename } from '../utils/fileTypes.js';
 import { createStorageAdapter } from '../storage/index.js';
@@ -30,7 +31,7 @@ export class DocumentStorageService {
         file.mimetype
       );
       const extractedText = parsed.text.slice(0, config.MAX_EXTRACTED_TEXT_CHARS);
-      return await AiDocument.create({
+      const created = await AiDocument.create({
         userId,
         originalName: sanitizeFilename(file.originalname),
         storedName,
@@ -49,6 +50,8 @@ export class DocumentStorageService {
           extractedTextTruncated: parsed.text.length > extractedText.length,
         },
       });
+      await this.indexForRag(userId, String(created._id), created.originalName, extractedText);
+      return created;
     } catch (error) {
       await this.storage.delete(stored.key).catch(() => undefined);
       throw error;
@@ -86,6 +89,7 @@ export class DocumentStorageService {
   async delete(id: string, userId: string): Promise<void> {
     const doc = await this.getById(id, userId);
     await this.storage.delete(doc.storageKey || doc.storagePath);
+    await this.removeRagIndex(userId, id);
     await doc.deleteOne();
   }
 
@@ -115,6 +119,30 @@ export class DocumentStorageService {
     } catch (error) {
       await this.storage.delete(stored.key).catch(() => undefined);
       throw error;
+    }
+  }
+
+  private async indexForRag(
+    userId: string,
+    documentId: string,
+    filename: string,
+    text: string
+  ) {
+    try {
+      const { ragService } = await import('./RagService.js');
+      const count = await ragService.indexFromText(userId, documentId, filename, text);
+      logger.info(`Indexed ${count} RAG passages for ${filename}`);
+    } catch (err) {
+      logger.warn(`RAG index failed for ${filename}: ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  private async removeRagIndex(userId: string, documentId: string) {
+    try {
+      const { ragService } = await import('./RagService.js');
+      await ragService.removeDocument(userId, documentId);
+    } catch (err) {
+      logger.warn(`RAG cleanup failed for ${documentId}: ${err instanceof Error ? err.message : err}`);
     }
   }
 }

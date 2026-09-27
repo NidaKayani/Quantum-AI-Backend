@@ -2,7 +2,7 @@ import OpenAIImport from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions.js';
 import { config, logger } from '../../config/index.js';
 import { AiProviderError } from '../../utils/errors.js';
-import { filterChatModels } from '../../utils/chatModels.js';
+import { filterChatModels, resolveChatModel } from '../../utils/chatModels.js';
 import type {
   AiChatRequest,
   AiChatResponse,
@@ -60,7 +60,7 @@ export class GroqProvider implements IAiProvider {
   async chat(request: AiChatRequest): Promise<AiChatResponse> {
     try {
       const response = await this.client.chat.completions.create({
-        model: request.model ?? config.GROQ_CHAT_MODEL,
+        model: resolveChatModel(request.model, config.GROQ_CHAT_MODEL),
         messages: request.messages as ChatCompletionMessageParam[],
         max_completion_tokens: request.maxTokens ?? config.GROQ_MAX_COMPLETION_TOKENS,
         temperature: request.temperature ?? 0.7,
@@ -90,7 +90,7 @@ export class GroqProvider implements IAiProvider {
   async *chatStream(request: AiChatRequest): AsyncGenerator<AiStreamChunk> {
     try {
       const stream = await this.client.chat.completions.create({
-        model: request.model ?? config.GROQ_CHAT_MODEL,
+        model: resolveChatModel(request.model, config.GROQ_CHAT_MODEL),
         messages: request.messages as ChatCompletionMessageParam[],
         max_completion_tokens: request.maxTokens ?? config.GROQ_MAX_COMPLETION_TOKENS,
         temperature: request.temperature ?? 0.7,

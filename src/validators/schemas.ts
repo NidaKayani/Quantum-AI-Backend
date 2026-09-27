@@ -74,3 +74,18 @@ export const authLoginSchema = z.object({
   email: z.string().email().max(254),
   password: z.string().min(1).max(128),
 });
+
+export const createSavedStudySchema = z.object({
+  kind: z.enum(['summary', 'quiz', 'slides']),
+  title: z.string().min(1).max(200),
+  documentId: z.string().optional(),
+  documentName: z.string().min(1).max(300),
+  payload: z.record(z.string(), z.unknown()),
+});
+
+export const updateSavedStudySchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  payload: z.record(z.string(), z.unknown()).optional(),
+}).refine((value) => value.title != null || value.payload != null, {
+  message: 'Title or payload is required',
+});
