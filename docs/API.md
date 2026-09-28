@@ -67,7 +67,7 @@ Legacy QuantumChat JWTs signed with the same `JWT_SECRET` (missing/`quantum-chat
   "message": "Explain photosynthesis simply",
   "conversationId": "optional-mongo-id",
   "documentIds": ["optional-doc-id"],
-  "model": "llama-3.3-70b-versatile",
+  "model": "openai/gpt-oss-120b",
   "temperature": 0.7,
   "stream": false
 }
@@ -80,7 +80,7 @@ Legacy QuantumChat JWTs signed with the same `JWT_SECRET` (missing/`quantum-chat
   "data": {
     "conversationId": "...",
     "message": "...",
-    "model": "llama-3.3-70b-versatile",
+    "model": "openai/gpt-oss-120b",
     "usage": { "promptTokens": 100, "completionTokens": 50, "totalTokens": 150 }
   }
 }

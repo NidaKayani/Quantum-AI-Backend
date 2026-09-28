@@ -60,6 +60,21 @@ export const presentationSchema = z.object({
   sloTopics: z.array(z.string().max(200)).max(20).optional(),
 });
 
+const presentationSlideSchema = z.object({
+  type: z.string().min(1).max(50),
+  title: z.string().min(1).max(300),
+  bullets: z.array(z.string().max(1000)).max(40).optional(),
+  notes: z.string().max(4000).optional(),
+});
+
+export const buildPresentationSchema = z.object({
+  presentationTitle: z.string().min(1).max(300),
+  subtitle: z.string().max(500).optional(),
+  slides: z.array(presentationSlideSchema).min(1).max(80),
+  filename: z.string().max(200).optional(),
+  sourceDocumentId: z.string().optional(),
+});
+
 export const objectIdParamSchema = z.object({
   id: z.string().min(1),
 });

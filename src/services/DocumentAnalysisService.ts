@@ -4,6 +4,7 @@ import { documentParserService } from './DocumentParserService.js';
 import { getAiProvider } from '../providers/ai/index.js';
 import type { AiMessage } from '../providers/ai/types.js';
 import { truncateText } from '../utils/fileTypes.js';
+import { config } from '../config/index.js';
 import { z } from 'zod';
 import { UsageMetric } from '../models/UsageMetric.js';
 
@@ -60,7 +61,10 @@ ${context}
     ];
 
     const provider = getAiProvider();
-    const response = await provider.chat({ messages });
+    const response = await provider.chat({
+      messages,
+      model: config.GROQ_CHAT_MODEL,
+    });
     return { answer: response.content, model: response.model, sources: rag?.sources };
   }
 
@@ -87,6 +91,7 @@ ${context}
       DOCUMENT_CONTEXT_LIMIT
     );
     const response = await getAiProvider().chat({
+      model: config.GROQ_CHAT_MODEL,
       temperature: 0.3,
       maxTokens: 5_000,
       messages: [

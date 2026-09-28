@@ -12,6 +12,7 @@ import {
 } from './WebSearchService.js';
 import { createQuantumChatReceipt } from '../utils/serviceReceipt.js';
 import { UsageMetric } from '../models/UsageMetric.js';
+import { resolveChatModel } from '../utils/chatModels.js';
 
 const SYSTEM_PROMPT = `You are Quantum AI, a helpful, accurate, and student-friendly educational assistant built for Quantum Chat. Provide clear explanations, structured answers, and practical examples when appropriate.
 
@@ -83,7 +84,7 @@ export class AiChatService {
     const startedAt = Date.now();
     const response = await provider.chat({
       messages,
-      model: options?.model,
+      model: resolveChatModel(options?.model, config.GROQ_CHAT_MODEL),
       temperature: options?.temperature,
     });
 
@@ -182,7 +183,7 @@ export class AiChatService {
     const provider = getAiProvider();
     const startedAt = Date.now();
     let fullContent = '';
-    const model = options?.model ?? config.GROQ_CHAT_MODEL;
+    const model = resolveChatModel(options?.model, config.GROQ_CHAT_MODEL);
     let clientAborted = false;
 
     const onClose = () => {
@@ -193,7 +194,7 @@ export class AiChatService {
     try {
       for await (const chunk of provider.chatStream({
         messages,
-        model: options?.model,
+        model,
         temperature: options?.temperature,
       })) {
         if (clientAborted || res.writableEnded) break;

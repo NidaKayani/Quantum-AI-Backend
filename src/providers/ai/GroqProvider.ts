@@ -58,9 +58,10 @@ export class GroqProvider implements IAiProvider {
   }
 
   async chat(request: AiChatRequest): Promise<AiChatResponse> {
+    const model = resolveChatModel(request.model ?? config.GROQ_CHAT_MODEL, config.GROQ_CHAT_MODEL);
     try {
       const response = await this.client.chat.completions.create({
-        model: resolveChatModel(request.model, config.GROQ_CHAT_MODEL),
+        model,
         messages: request.messages as ChatCompletionMessageParam[],
         max_completion_tokens: request.maxTokens ?? config.GROQ_MAX_COMPLETION_TOKENS,
         temperature: request.temperature ?? 0.7,
@@ -80,7 +81,7 @@ export class GroqProvider implements IAiProvider {
         },
       };
     } catch (err) {
-      logger.error('Groq chat error', { err });
+      logger.error('Groq chat error', { err, model });
       throw new AiProviderError(
         err instanceof Error ? err.message : 'Groq chat request failed',
         err
@@ -89,9 +90,10 @@ export class GroqProvider implements IAiProvider {
   }
 
   async *chatStream(request: AiChatRequest): AsyncGenerator<AiStreamChunk> {
+    const model = resolveChatModel(request.model ?? config.GROQ_CHAT_MODEL, config.GROQ_CHAT_MODEL);
     try {
       const stream = await this.client.chat.completions.create({
-        model: resolveChatModel(request.model, config.GROQ_CHAT_MODEL),
+        model,
         messages: request.messages as ChatCompletionMessageParam[],
         max_completion_tokens: request.maxTokens ?? config.GROQ_MAX_COMPLETION_TOKENS,
         temperature: request.temperature ?? 0.7,
@@ -106,7 +108,7 @@ export class GroqProvider implements IAiProvider {
         if (done) yield { content: '', done: true };
       }
     } catch (err) {
-      logger.error('Groq stream error', { err });
+      logger.error('Groq stream error', { err, model });
       throw new AiProviderError(
         err instanceof Error ? err.message : 'Groq streaming request failed',
         err
