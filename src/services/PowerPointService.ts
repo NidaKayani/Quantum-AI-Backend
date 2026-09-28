@@ -235,7 +235,7 @@ import { getAiProvider } from '../providers/ai/index.js';
 import { documentStorageService } from './DocumentStorageService.js';
 import { truncateText } from '../utils/fileTypes.js';
 import { ValidationError } from '../utils/errors.js';
-// import { createPptx, PptxGenJS } from '../utils/pptx.js';
+import { config } from '../config/index.js';
 import { createPptx } from '../utils/pptx.js';
 
 const slideSchema = z.object({
@@ -300,6 +300,7 @@ ${context}
 
     const provider = getAiProvider();
     const response = await provider.chat({
+      model: config.GROQ_CHAT_MODEL,
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.4,
       maxTokens: 3000,

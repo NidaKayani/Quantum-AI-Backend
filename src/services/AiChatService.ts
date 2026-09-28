@@ -3,17 +3,16 @@ import { config } from '../config/index.js';
 import { getAiProvider } from '../providers/ai/index.js';
 import type { AiMessage } from '../providers/ai/types.js';
 import { conversationService } from './ConversationService.js';
-import { documentStorageService } from './DocumentStorageService.js';
+import { ragService, type RagSource } from './RagService.js';
 import {
   webSearchService,
   type SearchHit,
   type SearchSource,
   type WebSearchResult,
 } from './WebSearchService.js';
-import { truncateText } from '../utils/fileTypes.js';
-import { NotFoundError } from '../utils/errors.js';
 import { createQuantumChatReceipt } from '../utils/serviceReceipt.js';
 import { UsageMetric } from '../models/UsageMetric.js';
+import { resolveChatModel } from '../utils/chatModels.js';
 
 const SYSTEM_PROMPT = `You are Quantum AI, a helpful, accurate, and student-friendly educational assistant built for Quantum Chat. Provide clear explanations, structured answers, and practical examples when appropriate.
 
@@ -25,7 +24,7 @@ Choose the best output format from the user's request — do not ask them to pic
 - Lesson plan / learning objectives / teaching plan → structured plan with objectives, outline, and activities.
 - PowerPoint / slides / presentation → slide-by-slide outline (Slide 1: Title, bullets, speaker notes). Make it ready to paste into slides.
 - Solve / explain an uploaded image or homework photo → step-by-step solution; note anything unreadable.
-- When uploaded documents are in context, ground answers in them and name the source file when relevant.
+- When retrieved passages from uploaded files are provided, answer from those passages, name the source file, and say so if the passages do not contain the answer.
 
 When answering programming questions:
 - Put runnable code in fenced markdown code blocks with the correct language tag (python, javascript, typescript, java, etc.).
@@ -66,11 +65,12 @@ export class AiChatService {
     const history = options?.ephemeral
       ? []
       : await conversationService.getHistoryForAi(conversationId, userId);
-    const contextBlock = await this.buildDocumentContext(userId, options?.documentIds, message);
+    const documentIds = await this.resolveDocumentIds(userId, conversationId, options);
+    const rag = await ragService.retrieve(userId, documentIds, message);
     const messages = this.buildMessages(
       history,
       message,
-      contextBlock,
+      rag.context,
       options?.explicitContext,
       searchBundle?.context
     );
@@ -84,7 +84,7 @@ export class AiChatService {
     const startedAt = Date.now();
     const response = await provider.chat({
       messages,
-      model: options?.model,
+      model: resolveChatModel(options?.model, config.GROQ_CHAT_MODEL),
       temperature: options?.temperature,
     });
 
@@ -92,6 +92,7 @@ export class AiChatService {
       await conversationService.appendMessage(conversationId, userId, 'assistant', response.content, {
         aiModel: response.model,
         tokenUsage: response.usage,
+        metadata: rag.sources.length ? { ragSources: rag.sources } : undefined,
       });
     }
     await UsageMetric.create({
@@ -123,6 +124,7 @@ export class AiChatService {
       model: response.model,
       usage: response.usage,
       searchResults: searchBundle?.result,
+      ragSources: rag.sources,
       ...receipt,
     };
   }
@@ -143,11 +145,12 @@ export class AiChatService {
     const history = options?.ephemeral
       ? []
       : await conversationService.getHistoryForAi(conversationId, userId);
-    const contextBlock = await this.buildDocumentContext(userId, options?.documentIds, message);
+    const documentIds = await this.resolveDocumentIds(userId, conversationId, options);
+    const rag = await ragService.retrieve(userId, documentIds, message);
     const messages = this.buildMessages(
       history,
       message,
-      contextBlock,
+      rag.context,
       options?.explicitContext,
       searchBundle?.context
     );
@@ -174,12 +177,13 @@ export class AiChatService {
             results: searchBundle.result.results,
           }
         : undefined,
+      ragSources: rag.sources.length ? rag.sources : undefined,
     });
 
     const provider = getAiProvider();
     const startedAt = Date.now();
     let fullContent = '';
-    const model = options?.model ?? config.GROQ_CHAT_MODEL;
+    const model = resolveChatModel(options?.model, config.GROQ_CHAT_MODEL);
     let clientAborted = false;
 
     const onClose = () => {
@@ -190,7 +194,7 @@ export class AiChatService {
     try {
       for await (const chunk of provider.chatStream({
         messages,
-        model: options?.model,
+        model,
         temperature: options?.temperature,
       })) {
         if (clientAborted || res.writableEnded) break;
@@ -209,7 +213,10 @@ export class AiChatService {
               userId,
               'assistant',
               fullContent,
-              { aiModel: model }
+              {
+                aiModel: model,
+                metadata: rag.sources.length ? { ragSources: rag.sources } : undefined,
+              }
             );
         await UsageMetric.create({
           userId,
@@ -286,7 +293,10 @@ export class AiChatService {
   ): AiMessage[] {
     const systemParts = [SYSTEM_PROMPT];
     if (documentContext) {
-      systemParts.push(`\nRelevant uploaded documents:\n${documentContext}`);
+      systemParts.push(
+        '\nRetrieved passages from the user\'s uploaded files. Use them when the question is about those files, cite the file name, and say when the passages do not contain the answer:\n' +
+          documentContext
+      );
     }
     if (webSearchContext) {
       systemParts.push(
@@ -309,46 +319,27 @@ export class AiChatService {
     ];
   }
 
-  private async buildDocumentContext(
+  private async resolveDocumentIds(
     userId: string,
-    documentIds: string[] | undefined,
-    query: string
-  ): Promise<string> {
-    if (!documentIds?.length) return '';
+    conversationId: string,
+    options?: ChatOptions
+  ): Promise<string[]> {
+    const requested = [...new Set((options?.documentIds ?? []).filter(Boolean))];
+    if (options?.ephemeral || conversationId === 'ephemeral') return requested;
 
-    const parts: string[] = [];
-    for (const id of documentIds) {
-      try {
-        const doc = await documentStorageService.getById(id, userId);
-        const text = await documentStorageService.getExtractedText(id, userId);
-        parts.push(`### ${doc.originalName}\n${this.selectRelevantChunks(text, query)}`);
-      } catch (err) {
-        if (err instanceof NotFoundError) continue;
-        throw err;
+    const conv = await conversationService.getById(conversationId, userId);
+    const stored = conv.documentIds.map((id) => String(id));
+    for (const id of requested) {
+      if (!stored.includes(id)) {
+        await conversationService.addDocument(conversationId, userId, id);
+        stored.push(id);
       }
     }
-    return parts.join('\n\n');
-  }
-
-  private selectRelevantChunks(text: string, query: string): string {
-    const terms = new Set(query.toLowerCase().match(/[a-z0-9]{3,}/g) ?? []);
-    const chunks = text.match(/[\s\S]{1,4_000}(?:\n|$)/g) ?? [text];
-    const ranked = chunks
-      .map((chunk, index) => ({
-        chunk,
-        index,
-        score: [...terms].reduce(
-          (sum, term) => sum + (chunk.toLowerCase().split(term).length - 1),
-          0
-        ),
-      }))
-      .sort((a, b) => b.score - a.score || a.index - b.index)
-      .slice(0, 5)
-      .sort((a, b) => a.index - b.index)
-      .map(({ chunk }) => chunk);
-    return truncateText(ranked.join('\n\n'), 20_000);
+    return [...new Set([...stored, ...requested])];
   }
 }
+
+export type { RagSource };
 
 export const aiChatService = new AiChatService();
 

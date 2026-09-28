@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import dotenv from 'dotenv';
 import path from 'path';
+import {
+  isRetiredChatModel,
+  REPLACEMENT_CHAT_MODEL,
+  REPLACEMENT_VISION_MODEL,
+  resolveChatModel,
+} from '../utils/chatModels.js';
 
 // Load .env first, then override with .env.production when NODE_ENV=production
 dotenv.config();
@@ -15,8 +21,8 @@ const envSchema = z.object({
   MONGODB_URI: z.string().min(1, 'MONGODB_URI is required'),
   GROQ_API_KEY: z.string().min(1, 'GROQ_API_KEY is required'),
   GROQ_BASE_URL: z.string().url().default('https://api.groq.com/openai/v1'),
-  GROQ_CHAT_MODEL: z.string().default('openai/gpt-oss-120b'),
-  GROQ_VISION_MODEL: z.string().default('qwen/qwen3.6-27b'),
+  GROQ_CHAT_MODEL: z.string().default(REPLACEMENT_CHAT_MODEL),
+  GROQ_VISION_MODEL: z.string().default(REPLACEMENT_VISION_MODEL),
   GROQ_MAX_COMPLETION_TOKENS: z.coerce.number().default(4096),
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
   JWT_ISSUER: z.string().default('quantum-ai'),
@@ -86,8 +92,8 @@ const fallback = {
   MONGODB_URI: process.env.MONGODB_URI ?? '',
   GROQ_API_KEY: process.env.GROQ_API_KEY ?? '',
   GROQ_BASE_URL: 'https://api.groq.com/openai/v1',
-  GROQ_CHAT_MODEL: 'openai/gpt-oss-120b',
-  GROQ_VISION_MODEL: 'qwen/qwen3.6-27b',
+  GROQ_CHAT_MODEL: REPLACEMENT_CHAT_MODEL,
+  GROQ_VISION_MODEL: REPLACEMENT_VISION_MODEL,
   GROQ_MAX_COMPLETION_TOKENS: 4096,
   JWT_SECRET: process.env.JWT_SECRET ?? 'vercel-build-placeholder-secret',
   JWT_ISSUER: 'quantum-ai',
@@ -113,6 +119,15 @@ const fallback = {
 const data = parsed.success ? parsed.data : fallback;
 const isProduction = data.NODE_ENV === 'production';
 
+if (isRetiredChatModel(data.GROQ_CHAT_MODEL) || isRetiredChatModel(data.GROQ_VISION_MODEL)) {
+  console.warn(
+    '[config] Replacing retired Groq model ids. Set GROQ_CHAT_MODEL=openai/gpt-oss-120b and GROQ_VISION_MODEL=qwen/qwen3.6-27b in the host env (e.g. Vercel).'
+  );
+}
+
+const resolvedChatModel = resolveChatModel(data.GROQ_CHAT_MODEL, REPLACEMENT_CHAT_MODEL);
+const resolvedVisionModel = resolveChatModel(data.GROQ_VISION_MODEL, REPLACEMENT_VISION_MODEL);
+
 if (isProduction && !data.AUTH_REQUIRED) {
   console.warn(
     'AUTH_REQUIRED=false was ignored because NODE_ENV=production. Login is required on the live site.'
@@ -121,6 +136,8 @@ if (isProduction && !data.AUTH_REQUIRED) {
 
 export const config = {
   ...data,
+  GROQ_CHAT_MODEL: resolvedChatModel,
+  GROQ_VISION_MODEL: resolvedVisionModel,
   isProduction,
   // Never allow the X-User-Id impersonation bypass on a production host.
   // app.ts also fail-closes if this is ever false in production.

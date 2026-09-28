@@ -60,6 +60,21 @@ export const presentationSchema = z.object({
   sloTopics: z.array(z.string().max(200)).max(20).optional(),
 });
 
+const presentationSlideSchema = z.object({
+  type: z.string().min(1).max(50),
+  title: z.string().min(1).max(300),
+  bullets: z.array(z.string().max(1000)).max(40).optional(),
+  notes: z.string().max(4000).optional(),
+});
+
+export const buildPresentationSchema = z.object({
+  presentationTitle: z.string().min(1).max(300),
+  subtitle: z.string().max(500).optional(),
+  slides: z.array(presentationSlideSchema).min(1).max(80),
+  filename: z.string().max(200).optional(),
+  sourceDocumentId: z.string().optional(),
+});
+
 export const objectIdParamSchema = z.object({
   id: z.string().min(1),
 });
@@ -73,4 +88,19 @@ export const authRegisterSchema = z.object({
 export const authLoginSchema = z.object({
   email: z.string().email().max(254),
   password: z.string().min(1).max(128),
+});
+
+export const createSavedStudySchema = z.object({
+  kind: z.enum(['summary', 'quiz', 'slides']),
+  title: z.string().min(1).max(200),
+  documentId: z.string().optional(),
+  documentName: z.string().min(1).max(300),
+  payload: z.record(z.string(), z.unknown()),
+});
+
+export const updateSavedStudySchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  payload: z.record(z.string(), z.unknown()).optional(),
+}).refine((value) => value.title != null || value.payload != null, {
+  message: 'Title or payload is required',
 });

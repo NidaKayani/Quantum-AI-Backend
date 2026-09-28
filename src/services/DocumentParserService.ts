@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 import { getExtension } from '../utils/fileTypes.js';
 import { ValidationError } from '../utils/errors.js';
 import { config } from '../config/index.js';
+import { resolveChatModel, REPLACEMENT_VISION_MODEL } from '../utils/chatModels.js';
 import { getAiProvider } from '../providers/ai/index.js';
 
 export interface ParsedDocument {
@@ -112,7 +113,7 @@ export class DocumentParserService {
       throw new ValidationError('Images sent to vision must be 10 MB or smaller');
     }
     const response = await getAiProvider().chat({
-      model: config.GROQ_VISION_MODEL,
+      model: resolveChatModel(config.GROQ_VISION_MODEL, REPLACEMENT_VISION_MODEL),
       temperature: 0.2,
       maxTokens: 2_000,
       messages: [

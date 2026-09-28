@@ -1,8 +1,10 @@
 import { documentStorageService } from './DocumentStorageService.js';
+import { ragService } from './RagService.js';
 import { documentParserService } from './DocumentParserService.js';
 import { getAiProvider } from '../providers/ai/index.js';
 import type { AiMessage } from '../providers/ai/types.js';
 import { truncateText } from '../utils/fileTypes.js';
+import { config } from '../config/index.js';
 import { z } from 'zod';
 import { UsageMetric } from '../models/UsageMetric.js';
 
@@ -35,11 +37,15 @@ export class DocumentAnalysisService {
     documentId: string,
     userId: string,
     question: string,
-    conversationHistory: AiMessage[] = []
-  ): Promise<{ answer: string; model: string }> {
+    conversationHistory: AiMessage[] = [],
+    options?: { useFullDocument?: boolean }
+  ): Promise<{ answer: string; model: string; sources?: Array<{ filename: string; part: number; snippet: string }> }> {
     const doc = await documentStorageService.getById(documentId, userId);
     const text = await documentStorageService.getExtractedText(documentId, userId);
-    const context = truncateText(text, DOCUMENT_CONTEXT_LIMIT);
+    const rag = options?.useFullDocument
+      ? undefined
+      : await ragService.retrieve(userId, [documentId], question, 8);
+    const context = rag?.context || truncateText(text, DOCUMENT_CONTEXT_LIMIT);
 
     const systemPrompt = `You are Quantum AI, an expert educational assistant. Answer questions based ONLY on the provided document content. If the answer is not in the document, say so clearly. Be accurate, student-friendly, and cite relevant sections when possible.
 
@@ -55,15 +61,20 @@ ${context}
     ];
 
     const provider = getAiProvider();
-    const response = await provider.chat({ messages });
-    return { answer: response.content, model: response.model };
+    const response = await provider.chat({
+      messages,
+      model: config.GROQ_CHAT_MODEL,
+    });
+    return { answer: response.content, model: response.model, sources: rag?.sources };
   }
 
   async summarizeDocument(documentId: string, userId: string): Promise<{ summary: string; model: string }> {
     const result = await this.askAboutDocument(
       documentId,
       userId,
-      'Provide a comprehensive, student-friendly summary of this document including key concepts, main topics, and important takeaways.'
+      'Provide a comprehensive, student-friendly summary of this document including key concepts, main topics, and important takeaways.',
+      [],
+      { useFullDocument: true }
     );
     return { summary: result.answer, model: result.model };
   }
@@ -80,6 +91,7 @@ ${context}
       DOCUMENT_CONTEXT_LIMIT
     );
     const response = await getAiProvider().chat({
+      model: config.GROQ_CHAT_MODEL,
       temperature: 0.3,
       maxTokens: 5_000,
       messages: [

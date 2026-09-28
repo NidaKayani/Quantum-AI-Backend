@@ -163,6 +163,7 @@ export class ConversationService {
     extras?: {
       aiModel?: string;
       tokenUsage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number };
+      metadata?: Record<string, unknown>;
     }
   ) {
     await this.getById(conversationId, userId);
@@ -172,6 +173,7 @@ export class ConversationService {
       content,
       aiModel: extras?.aiModel,
       tokenUsage: extras?.tokenUsage,
+      metadata: extras?.metadata ?? {},
     });
     await Conversation.updateOne({ _id: conversationId }, { $set: { updatedAt: new Date() } });
     return msg;

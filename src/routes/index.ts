@@ -7,6 +7,7 @@ import documentRoutes from './document.routes.js';
 import presentationRoutes from './presentation.routes.js';
 import usageRoutes from './usage.routes.js';
 import searchRoutes from './search.routes.js';
+import savedRoutes from './saved.routes.js';
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use('/documents', documentRoutes);
 router.use('/presentations', presentationRoutes);
 router.use('/usage', usageRoutes);
 router.use('/search', searchRoutes);
+router.use('/saved', savedRoutes);
 
 export default router;
