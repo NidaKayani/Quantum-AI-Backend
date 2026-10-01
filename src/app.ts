@@ -6,7 +6,7 @@ import routes from './routes/index.js';
 import { globalRateLimiter, errorHandler, notFoundHandler } from './middleware/index.js';
 
 /** Helmet's CJS typings are not callable under NodeNext + TS 5.9; runtime default export is fine. */
-const applyHelmet = helmet as unknown as () => RequestHandler;
+const applyHelmet = helmet as unknown as (options?: Parameters<typeof helmet>[0]) => RequestHandler;
 
 export function createApp() {
   const app = express();
@@ -28,7 +28,17 @@ export function createApp() {
     next();
   });
 
-  app.use(applyHelmet());
+  // crossOriginResourcePolicy MUST be "cross-origin" for this API.
+  // Helmet's default "same-origin" makes browsers block QuantumChat
+  // (chat.quantumlogicslimited.com) from reading AI responses even when CORS
+  // Allow-Origin is correct — QuantumAI then looks "broken" with Failed to fetch.
+  app.use(
+    applyHelmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      // API is not a browsable document; keep COOP relaxed for credentialed CORS.
+      crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+    })
+  );
   // Always allow known Quantum product frontends, then merge CORS_ORIGIN.
   // Stale Vercel env without chat.quantumlogicslimited.com used to block
   // QuantumChat → Quantum AI requests (preflight 204 with no Allow-Origin).
