@@ -50,7 +50,9 @@ export function createApp() {
         'https://chat.quantumlogicslimited.com',
         'https://ai.quantumlogicslimited.com',
         'https://quantum-chat.vercel.app',
+        'https://quantum-chat-backend-six.vercel.app',
         'https://quantum-ai-frontend.vercel.app',
+        'https://quantum-ai-backend-six.vercel.app',
         ...String(config.CORS_ORIGIN || '')
           .split(',')
           .map((origin) => origin.trim())
