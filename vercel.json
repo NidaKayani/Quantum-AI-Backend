@@ -1,8 +1,9 @@
 {
   "version": 2,
+  "installCommand": "npm install --include=dev",
   "buildCommand": "npm run build",
   "functions": {
-    "api/index.ts": {
+    "api/index.js": {
       "maxDuration": 300,
       "includeFiles": "dist/**"
     }

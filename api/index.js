@@ -1,12 +1,11 @@
-import type { Request, Response } from 'express';
 import mongoose from 'mongoose';
-// Import compiled output so Vercel does not re-typecheck all of src/ (helmet/CJS interop, etc.)
+// Use compiled output so Vercel does not re-typecheck src/ (helmet CJS interop, etc.).
 import app from '../dist/app.js';
 import { connectDatabase } from '../dist/config/index.js';
 
-let connectionPromise: Promise<void> | undefined;
+let connectionPromise;
 
-async function ensureDatabase(): Promise<void> {
+async function ensureDatabase() {
   if (mongoose.connection.readyState === 1) return;
   connectionPromise ??= connectDatabase().catch((error) => {
     connectionPromise = undefined;
@@ -15,7 +14,7 @@ async function ensureDatabase(): Promise<void> {
   await connectionPromise;
 }
 
-export default async function handler(req: Request, res: Response) {
+export default async function handler(req, res) {
   await ensureDatabase();
   return app(req, res);
 }

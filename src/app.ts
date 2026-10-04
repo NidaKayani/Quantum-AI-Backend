@@ -6,7 +6,7 @@ import routes from './routes/index.js';
 import { globalRateLimiter, errorHandler, notFoundHandler } from './middleware/index.js';
 
 /** Helmet's CJS typings are not callable under NodeNext + TS 5.9; runtime default export is fine. */
-const applyHelmet = helmet as unknown as (options?: Parameters<typeof helmet>[0]) => RequestHandler;
+const applyHelmet = helmet as unknown as (options?: Record<string, unknown>) => RequestHandler;
 
 export function createApp() {
   const app = express();
